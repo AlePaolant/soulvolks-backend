@@ -7,7 +7,7 @@
     "displayName": "Biglietto"
   },
   "options": {
-    "draftAndPublish": true
+    "draftAndPublish": false
   },
   "pluginOptions": {},
   "attributes": {
@@ -39,7 +39,7 @@
       "type": "enumeration",
       "required": true,
       "enum": [
-        "volkswagen, ",
+        "volkswagen",
         "standard"
       ]
     },
@@ -47,16 +47,16 @@
       "type": "enumeration",
       "required": true,
       "enum": [
-        "A,",
+        "A",
         "B"
       ]
     },
     "stato": {
       "type": "enumeration",
       "required": true,
-      "default": "pagato,",
+      "default": "pagato",
       "enum": [
-        "pagato,",
+        "pagato",
         "usato"
       ]
     },
@@ -67,12 +67,23 @@
     "uuid": {
       "type": "uid",
       "targetField": "telefono",
-      "required": true
+      "required": true,
+      "unique": true
     },
     "paypal_order_id": {
       "type": "string",
+      "unique": false
+    },
+    "metodo_pagamento": {
+      "type": "enumeration",
       "required": true,
-      "unique": true
+      "default": "paypal",
+      "enum": [
+        "paypal",
+        "contanti",
+        "bonifico",
+        "associato"
+      ]
     },
     "modello": {
       "type": "string"
