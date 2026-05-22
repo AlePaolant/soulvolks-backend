@@ -1,0 +1,87 @@
+{
+  "kind": "collectionType",
+  "collectionName": "bigliettos",
+  "info": {
+    "singularName": "biglietto",
+    "pluralName": "bigliettos",
+    "displayName": "Biglietto"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "nome": {
+      "type": "string",
+      "required": true
+    },
+    "cognome": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "telefono": {
+      "type": "string",
+      "required": true
+    },
+    "n_passeggeri": {
+      "type": "integer",
+      "required": true
+    },
+    "targa": {
+      "type": "string",
+      "required": true
+    },
+    "tipo": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "volkswagen, ",
+        "standard"
+      ]
+    },
+    "zona": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "A,",
+        "B"
+      ]
+    },
+    "stato": {
+      "type": "enumeration",
+      "required": true,
+      "default": "pagato,",
+      "enum": [
+        "pagato,",
+        "usato"
+      ]
+    },
+    "prezzo": {
+      "type": "decimal",
+      "required": true
+    },
+    "uuid": {
+      "type": "uid",
+      "targetField": "telefono",
+      "required": true
+    },
+    "paypal_order_id": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "modello": {
+      "type": "string"
+    },
+    "anno": {
+      "type": "integer"
+    },
+    "note": {
+      "type": "string"
+    }
+  }
+}
