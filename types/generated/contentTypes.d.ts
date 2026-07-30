@@ -528,7 +528,7 @@ export interface ApiBigliettoBiglietto extends Struct.CollectionTypeSchema {
     singularName: 'biglietto';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
     anno: Schema.Attribute.Integer;
@@ -543,27 +543,80 @@ export interface ApiBigliettoBiglietto extends Struct.CollectionTypeSchema {
       'api::biglietto.biglietto'
     > &
       Schema.Attribute.Private;
+    metodo_pagamento: Schema.Attribute.Enumeration<
+      ['paypal', 'contanti', 'bonifico', 'associato']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'paypal'>;
     modello: Schema.Attribute.String;
     n_passeggeri: Schema.Attribute.Integer & Schema.Attribute.Required;
     nome: Schema.Attribute.String & Schema.Attribute.Required;
     note: Schema.Attribute.String;
-    paypal_order_id: Schema.Attribute.String &
-      Schema.Attribute.Required &
-      Schema.Attribute.Unique;
+    paypal_order_id: Schema.Attribute.String;
     prezzo: Schema.Attribute.Decimal & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
-    stato: Schema.Attribute.Enumeration<['pagato,', 'usato']> &
+    stato: Schema.Attribute.Enumeration<['pagato', 'usato']> &
       Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'pagato,'>;
+      Schema.Attribute.DefaultTo<'pagato'>;
     targa: Schema.Attribute.String & Schema.Attribute.Required;
     telefono: Schema.Attribute.String & Schema.Attribute.Required;
-    tipo: Schema.Attribute.Enumeration<['volkswagen, ', 'standard']> &
+    tipo: Schema.Attribute.Enumeration<['volkswagen', 'standard']> &
       Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    uuid: Schema.Attribute.UID<'telefono'> & Schema.Attribute.Required;
-    zona: Schema.Attribute.Enumeration<['A,', 'B']> & Schema.Attribute.Required;
+    uuid: Schema.Attribute.UID<'telefono'> &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    zona: Schema.Attribute.Enumeration<['A', 'B']> & Schema.Attribute.Required;
+  };
+}
+
+export interface ApiConcorsoEntryConcorsoEntry
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'concorso_entries';
+  info: {
+    displayName: 'Concorso Entry';
+    pluralName: 'concorso-entries';
+    singularName: 'concorso-entry';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    cartellaSlug: Schema.Attribute.String & Schema.Attribute.Required;
+    cognome: Schema.Attribute.String & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.Email & Schema.Attribute.Required;
+    foto: Schema.Attribute.Component<'concorso.foto', true> &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 4;
+        },
+        number
+      >;
+    importo: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<10>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::concorso-entry.concorso-entry'
+    > &
+      Schema.Attribute.Private;
+    nome: Schema.Attribute.String & Schema.Attribute.Required;
+    note: Schema.Attribute.Text;
+    paypalOrderId: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    statoPagamento: Schema.Attribute.Enumeration<
+      ['in_attesa', 'pagato_paypal', 'pagato_contanti', 'pagato_bonifico']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'in_attesa'>;
+    telefono: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -1081,6 +1134,7 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::articolo.articolo': ApiArticoloArticolo;
       'api::biglietto.biglietto': ApiBigliettoBiglietto;
+      'api::concorso-entry.concorso-entry': ApiConcorsoEntryConcorsoEntry;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;

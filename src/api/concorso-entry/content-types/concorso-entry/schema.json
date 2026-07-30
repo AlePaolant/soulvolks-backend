@@ -1,0 +1,62 @@
+{
+  "kind": "collectionType",
+  "collectionName": "concorso_entries",
+  "info": {
+    "singularName": "concorso-entry",
+    "pluralName": "concorso-entries",
+    "displayName": "Concorso Entry"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "nome": {
+      "type": "string",
+      "required": true
+    },
+    "cognome": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "telefono": {
+      "type": "string",
+      "required": true
+    },
+    "note": {
+      "type": "text"
+    },
+    "cartellaSlug": {
+      "type": "string",
+      "required": true
+    },
+    "statoPagamento": {
+      "type": "enumeration",
+      "required": true,
+      "default": "in_attesa",
+      "enum": [
+        "in_attesa",
+        "pagato_paypal",
+        "pagato_contanti",
+        "pagato_bonifico"
+      ]
+    },
+    "paypalOrderId": {
+      "type": "string"
+    },
+    "importo": {
+      "type": "decimal",
+      "default": 10
+    },
+    "foto": {
+      "type": "component",
+      "component": "concorso.foto",
+      "repeatable": true,
+      "max": 4
+    }
+  }
+}

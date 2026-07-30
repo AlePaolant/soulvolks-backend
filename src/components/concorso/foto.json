@@ -1,0 +1,26 @@
+{
+  "collectionName": "components_concorso_fotos",
+  "info": {
+    "displayName": "foto",
+    "icon": "landscape"
+  },
+  "options": {},
+  "attributes": {
+    "nomeFile": {
+      "type": "string",
+      "required": true
+    },
+    "titolo": {
+      "type": "string"
+    },
+    "nomeOriginale": {
+      "type": "string",
+      "required": true
+    },
+    "path": {
+      "type": "string",
+      "required": true
+    }
+  },
+  "config": {}
+}
