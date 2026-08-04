@@ -48,6 +48,11 @@
     "paypalOrderId": {
       "type": "string"
     },
+    "consensoAccettato": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    },
     "importo": {
       "type": "decimal",
       "default": 10
