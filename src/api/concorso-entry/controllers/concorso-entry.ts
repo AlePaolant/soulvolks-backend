@@ -1,16 +1,39 @@
 import { factories } from '@strapi/strapi';
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // rimuove accenti
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-}
+import fs from 'fs';
+import path from 'path';
 
 interface TurnstileResponse {
   success: boolean;
   [key: string]: unknown;
+}
+
+const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff]);
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB, come da regolamento
+const MAX_PHOTOS = 4;
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+function sanitizeFilename(name: string): string {
+  const base = name
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9-_ ]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+  return base.slice(0, 80) || 'foto';
+}
+
+function isRealJpeg(filePath: string): boolean {
+  const fd = fs.openSync(filePath, 'r');
+  const buffer = Buffer.alloc(3);
+  fs.readSync(fd, buffer, 0, 3, 0);
+  fs.closeSync(fd);
+  return buffer.equals(JPEG_MAGIC);
 }
 
 async function verifyTurnstile(token: string): Promise<boolean> {
@@ -79,5 +102,74 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
     });
 
     return ctx.send({ id: entry.id, cartellaSlug: entry.cartellaSlug });
+  },
+
+  async uploadFoto(ctx) {
+    const { id } = ctx.params;
+
+    const entry = await strapi.db.query('api::concorso-entry.concorso-entry').findOne({
+      where: { id },
+      populate: ['foto'],
+    });
+    if (!entry) {
+      return ctx.notFound('Iscrizione non trovata');
+    }
+    if (entry.foto && entry.foto.length > 0) {
+      return ctx.badRequest('Foto già caricate per questa iscrizione');
+    }
+
+    const files = ctx.request.files;
+    if (!files) {
+      return ctx.badRequest('Nessun file ricevuto');
+    }
+
+    const fileList = Object.values(files).flat().filter(Boolean) as any[];
+    if (fileList.length === 0) {
+      return ctx.badRequest('Nessun file ricevuto');
+    }
+    if (fileList.length > MAX_PHOTOS) {
+      return ctx.badRequest(`Massimo ${MAX_PHOTOS} foto`);
+    }
+
+    const titoli: string[] = [];
+    for (let i = 1; i <= MAX_PHOTOS; i++) {
+      titoli.push(ctx.request.body[`titolo${i}`] || '');
+    }
+
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'concorso', entry.cartellaSlug);
+    fs.mkdirSync(uploadDir, { recursive: true });
+
+    const fotoData = [];
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+
+      if (file.size > MAX_FILE_SIZE) {
+        return ctx.badRequest(`Il file ${file.name} supera i 10MB`);
+      }
+      if (!isRealJpeg(file.path)) {
+        return ctx.badRequest(`Il file ${file.name} non è un JPG valido`);
+      }
+
+      const titolo = titoli[i] ? sanitizeFilename(titoli[i]) : '';
+      const baseName = titolo || sanitizeFilename(path.parse(file.name).name);
+      const finalName = `${String(i + 1).padStart(2, '0')}-${baseName}.jpg`;
+      const destPath = path.join(uploadDir, finalName);
+
+      fs.copyFileSync(file.path, destPath);
+
+      fotoData.push({
+        nomeFile: finalName,
+        titolo: titoli[i] || null,
+        nomeOriginale: file.name,
+        path: `concorso/${entry.cartellaSlug}/${finalName}`,
+      });
+    }
+
+    await strapi.db.query('api::concorso-entry.concorso-entry').update({
+      where: { id },
+      data: { foto: fotoData },
+    });
+
+    return ctx.send({ ok: true, foto: fotoData.length });
   },
 }));
