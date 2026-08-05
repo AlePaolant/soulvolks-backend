@@ -8,6 +8,11 @@ function slugify(text: string): string {
     .replace(/(^-|-$)/g, '');
 }
 
+interface TurnstileResponse {
+  success: boolean;
+  [key: string]: unknown;
+}
+
 async function verifyTurnstile(token: string): Promise<boolean> {
   if (!token) return false;
   const secret = process.env.TURNSTILE_SECRET_KEY;
@@ -16,7 +21,7 @@ async function verifyTurnstile(token: string): Promise<boolean> {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `secret=${secret}&response=${token}`,
   });
-  const data = await res.json();
+  const data = (await res.json()) as TurnstileResponse;
   return data.success === true;
 }
 
