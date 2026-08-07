@@ -165,8 +165,7 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
       });
     }
 
-    await strapi.db.query('api::concorso-entry.concorso-entry').update({
-      where: { id },
+    await strapi.entityService.update('api::concorso-entry.concorso-entry', id, {
       data: { foto: fotoData },
     });
 
