@@ -124,7 +124,6 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
     }
 
     const fileList = Object.values(files).flat().filter(Boolean) as any[];
-    strapi.log.info('DEBUG file object: ' + JSON.stringify(fileList[0]));
     if (fileList.length === 0) {
       return ctx.badRequest('Nessun file ricevuto');
     }
@@ -145,23 +144,23 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
       const file = fileList[i];
 
       if (file.size > MAX_FILE_SIZE) {
-        return ctx.badRequest(`Il file ${file.name} supera i 10MB`);
+        return ctx.badRequest(`Il file ${file.originalFilename} supera i 10MB`);
       }
-      if (!isRealJpeg(file.path)) {
-        return ctx.badRequest(`Il file ${file.name} non è un JPG valido`);
+      if (!isRealJpeg(file.filepath)) {
+        return ctx.badRequest(`Il file ${file.originalFilename} non è un JPG valido`);
       }
 
       const titolo = titoli[i] ? sanitizeFilename(titoli[i]) : '';
-      const baseName = titolo || sanitizeFilename(path.parse(file.name).name);
+      const baseName = titolo || sanitizeFilename(path.parse(file.originalFilename).name);
       const finalName = `${String(i + 1).padStart(2, '0')}-${baseName}.jpg`;
       const destPath = path.join(uploadDir, finalName);
 
-      fs.copyFileSync(file.path, destPath);
+      fs.copyFileSync(file.filepath, destPath);
 
       fotoData.push({
         nomeFile: finalName,
         titolo: titoli[i] || null,
-        nomeOriginale: file.name,
+        nomeOriginale: file.originalFilename,
         path: `concorso/${entry.cartellaSlug}/${finalName}`,
       });
     }
