@@ -124,6 +124,7 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
     }
 
     const fileList = Object.values(files).flat().filter(Boolean) as any[];
+    strapi.log.info('DEBUG file object: ' + JSON.stringify(fileList[0]));
     if (fileList.length === 0) {
       return ctx.badRequest('Nessun file ricevuto');
     }
