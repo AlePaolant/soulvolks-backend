@@ -34,12 +34,14 @@
       "type": "string",
       "required": true
     },
-    "statoPagamento": {
+      "statoPagamento": {
       "type": "enumeration",
       "required": true,
       "default": "in_attesa",
       "enum": [
         "in_attesa",
+        "in_attesa_contanti",
+        "in_attesa_bonifico",
         "pagato_paypal",
         "pagato_contanti",
         "pagato_bonifico"

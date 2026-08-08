@@ -1,6 +1,7 @@
 import { factories } from '@strapi/strapi';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 interface TurnstileResponse {
   success: boolean;
@@ -8,8 +9,9 @@ interface TurnstileResponse {
 }
 
 const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff]);
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB, come da regolamento
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_PHOTOS = 4;
+const UPLOADS_ROOT = path.join(process.cwd(), 'public', 'uploads', 'concorso');
 
 function slugify(text: string): string {
   return text
@@ -46,6 +48,11 @@ async function verifyTurnstile(token: string): Promise<boolean> {
   });
   const data = (await res.json()) as TurnstileResponse;
   return data.success === true;
+}
+
+function checkAdmin(ctx): boolean {
+  const header = ctx.request.headers['x-admin-secret'];
+  return !!header && header === process.env.CONCORSO_ADMIN_SECRET;
 }
 
 export default factories.createCoreController('api::concorso-entry.concorso-entry', ({ strapi }) => ({
@@ -88,10 +95,7 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
 
     const entry = await strapi.db.query('api::concorso-entry.concorso-entry').create({
       data: {
-        nome,
-        cognome,
-        email,
-        telefono,
+        nome, cognome, email, telefono,
         note: note || null,
         consensoAccettato: true,
         cartellaSlug: slug,
@@ -111,52 +115,40 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
       where: { id },
       populate: ['foto'],
     });
-    if (!entry) {
-      return ctx.notFound('Iscrizione non trovata');
-    }
+    if (!entry) return ctx.notFound('Iscrizione non trovata');
     if (entry.foto && entry.foto.length > 0) {
       return ctx.badRequest('Foto già caricate per questa iscrizione');
     }
 
     const files = ctx.request.files;
-    if (!files) {
-      return ctx.badRequest('Nessun file ricevuto');
-    }
+    if (!files) return ctx.badRequest('Nessun file ricevuto');
 
     const fileList = Object.values(files).flat().filter(Boolean) as any[];
-    if (fileList.length === 0) {
-      return ctx.badRequest('Nessun file ricevuto');
-    }
-    if (fileList.length > MAX_PHOTOS) {
-      return ctx.badRequest(`Massimo ${MAX_PHOTOS} foto`);
-    }
+    if (fileList.length === 0) return ctx.badRequest('Nessun file ricevuto');
+    if (fileList.length > MAX_PHOTOS) return ctx.badRequest(`Massimo ${MAX_PHOTOS} foto`);
 
     const titoli: string[] = [];
     for (let i = 1; i <= MAX_PHOTOS; i++) {
       titoli.push(ctx.request.body[`titolo${i}`] || '');
     }
 
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'concorso', entry.cartellaSlug);
+    const uploadDir = path.join(UPLOADS_ROOT, entry.cartellaSlug);
     fs.mkdirSync(uploadDir, { recursive: true });
 
     const fotoData = [];
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
-
       if (file.size > MAX_FILE_SIZE) {
         return ctx.badRequest(`Il file ${file.originalFilename} supera i 10MB`);
       }
       if (!isRealJpeg(file.filepath)) {
         return ctx.badRequest(`Il file ${file.originalFilename} non è un JPG valido`);
       }
-
       const titolo = titoli[i] ? sanitizeFilename(titoli[i]) : '';
       const baseName = titolo || sanitizeFilename(path.parse(file.originalFilename).name);
       const finalName = `${String(i + 1).padStart(2, '0')}-${baseName}.jpg`;
       const destPath = path.join(uploadDir, finalName);
-
       fs.copyFileSync(file.filepath, destPath);
-
       fotoData.push({
         nomeFile: finalName,
         titolo: titoli[i] || null,
@@ -167,20 +159,104 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
 
     await strapi.entityService.update('api::concorso-entry.concorso-entry', id, {
       data: {
-        nome: entry.nome,
-        cognome: entry.cognome,
-        email: entry.email,
-        telefono: entry.telefono,
-        note: entry.note,
-        cartellaSlug: entry.cartellaSlug,
-        statoPagamento: entry.statoPagamento,
-        paypalOrderId: entry.paypalOrderId,
-        consensoAccettato: entry.consensoAccettato,
-        importo: entry.importo,
-        foto: fotoData,
+        nome: entry.nome, cognome: entry.cognome, email: entry.email, telefono: entry.telefono,
+        note: entry.note, cartellaSlug: entry.cartellaSlug, statoPagamento: entry.statoPagamento,
+        paypalOrderId: entry.paypalOrderId, consensoAccettato: entry.consensoAccettato,
+        importo: entry.importo, foto: fotoData,
       },
     });
 
     return ctx.send({ ok: true, foto: fotoData.length });
+  },
+
+  async sceglipagamentoManuale(ctx) {
+    const { id } = ctx.params;
+    const { metodo } = ctx.request.body || {};
+    if (!['contanti', 'bonifico'].includes(metodo)) {
+      return ctx.badRequest('Metodo non valido');
+    }
+    const entry = await strapi.db.query('api::concorso-entry.concorso-entry').findOne({ where: { id } });
+    if (!entry) return ctx.notFound('Iscrizione non trovata');
+
+    await strapi.db.query('api::concorso-entry.concorso-entry').update({
+      where: { id },
+      data: { statoPagamento: `in_attesa_${metodo}` },
+    });
+
+    return ctx.send({ ok: true });
+  },
+
+  async adminLista(ctx) {
+    if (!checkAdmin(ctx)) return ctx.unauthorized('Non autorizzato');
+    const entries = await strapi.db.query('api::concorso-entry.concorso-entry').findMany({
+      populate: ['foto'],
+      orderBy: { createdAt: 'desc' },
+    });
+    return ctx.send({ data: entries });
+  },
+
+  async adminSegnaPagato(ctx) {
+    if (!checkAdmin(ctx)) return ctx.unauthorized('Non autorizzato');
+    const { id } = ctx.params;
+    const { metodo } = ctx.request.body || {};
+    if (!['contanti', 'bonifico'].includes(metodo)) {
+      return ctx.badRequest('Metodo non valido');
+    }
+    const entry = await strapi.db.query('api::concorso-entry.concorso-entry').findOne({ where: { id } });
+    if (!entry) return ctx.notFound('Iscrizione non trovata');
+
+    await strapi.db.query('api::concorso-entry.concorso-entry').update({
+      where: { id },
+      data: { statoPagamento: `pagato_${metodo}` },
+    });
+
+    return ctx.send({ ok: true });
+  },
+
+  async adminDownloadSingolo(ctx) {
+    if (!checkAdmin(ctx)) return ctx.unauthorized('Non autorizzato');
+    const { id } = ctx.params;
+    const entry = await strapi.db.query('api::concorso-entry.concorso-entry').findOne({ where: { id } });
+    if (!entry || !entry.cartellaSlug) return ctx.notFound('Iscrizione non trovata');
+
+    const dir = path.join(UPLOADS_ROOT, entry.cartellaSlug);
+    if (!fs.existsSync(dir)) return ctx.notFound('Nessuna foto per questa iscrizione');
+
+    const zipPath = path.join('/tmp', `${entry.cartellaSlug}.zip`);
+    execSync(`cd "${UPLOADS_ROOT}" && zip -r "${zipPath}" "${entry.cartellaSlug}"`);
+
+    ctx.set('Content-Type', 'application/zip');
+    ctx.set('Content-Disposition', `attachment; filename="${entry.cartellaSlug}.zip"`);
+    ctx.body = fs.createReadStream(zipPath);
+  },
+
+  async adminDownloadTutto(ctx) {
+    if (!checkAdmin(ctx)) return ctx.unauthorized('Non autorizzato');
+    if (!fs.existsSync(UPLOADS_ROOT)) return ctx.notFound('Nessuna foto caricata');
+
+    const zipPath = '/tmp/concorso-tutte-foto.zip';
+    if (fs.existsSync(zipPath)) fs.rmSync(zipPath);
+    execSync(`cd "${UPLOADS_ROOT}" && zip -r "${zipPath}" .`);
+
+    ctx.set('Content-Type', 'application/zip');
+    ctx.set('Content-Disposition', 'attachment; filename="concorso-tutte-foto.zip"');
+    ctx.body = fs.createReadStream(zipPath);
+  },
+
+  async adminCsv(ctx) {
+    if (!checkAdmin(ctx)) return ctx.unauthorized('Non autorizzato');
+    const entries = await strapi.db.query('api::concorso-entry.concorso-entry').findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const header = 'ID,Nome,Cognome,Email,Telefono,Note,StatoPagamento,Data\n';
+    const rows = entries.map(e => {
+      const esc = (v: string) => `"${(v || '').toString().replace(/"/g, '""')}"`;
+      return [e.id, esc(e.nome), esc(e.cognome), esc(e.email), esc(e.telefono), esc(e.note), e.statoPagamento, e.createdAt].join(',');
+    }).join('\n');
+
+    ctx.set('Content-Type', 'text/csv');
+    ctx.set('Content-Disposition', 'attachment; filename="concorso-partecipanti.csv"');
+    ctx.body = header + rows;
   },
 }));
