@@ -210,7 +210,7 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
       data: { statoPagamento: `pagato_${metodo}` },
     });
 
-    return ctx.send({ ok: true });
+    return ctx.send({ ok: true, entry: { ...entry, statoPagamento: `pagato_${metodo}` } });
   },
 
   async adminDownloadSingolo(ctx) {
