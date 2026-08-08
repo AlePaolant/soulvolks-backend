@@ -37,7 +37,32 @@ function isRealJpeg(filePath: string): boolean {
   fs.closeSync(fd);
   return buffer.equals(JPEG_MAGIC);
 }
-
+async function sendConfirmationEmail(entry: any) {
+  const apiKey = process.env.BREVO_API_KEY;
+  const emailFrom = process.env.EMAIL_FROM || 'support@soulvolks.it';
+  if (!apiKey || !entry.email) return;
+  try {
+    await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
+      body: JSON.stringify({
+        sender: { name: 'Soul Volks', email: emailFrom },
+        to: [{ email: entry.email, name: `${entry.nome} ${entry.cognome}` }],
+        subject: 'Iscrizione al concorso fotografico ricevuta — Soul Volks',
+        htmlContent: `
+          <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto">
+            <h2 style="color:#e2572b">Iscrizione ricevuta!</h2>
+            <p>Ciao ${entry.nome},</p>
+            <p>Le tue foto per il concorso <strong>Racconti visivi del Volks Camp 2026</strong> sono state ricevute correttamente. La partecipazione è gratuita, non devi fare altro.</p>
+            <p>In bocca al lupo!</p>
+            <p style="color:#888;font-size:13px">Soul Volks Club — Molise, Italia</p>
+          </div>
+        `,
+      }),
+    });
+  } catch { /* non blocchiamo la risposta se l'invio fallisce */ }
+}
+  
 async function verifyTurnstile(token: string): Promise<boolean> {
   if (!token) return false;
   const secret = process.env.TURNSTILE_SECRET_KEY;
@@ -93,14 +118,14 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
       counter++;
     }
 
-    const entry = await strapi.db.query('api::concorso-entry.concorso-entry').create({
+     const entry = await strapi.db.query('api::concorso-entry.concorso-entry').create({
       data: {
         nome, cognome, email, telefono,
         note: note || null,
         consensoAccettato: true,
         cartellaSlug: slug,
-        statoPagamento: 'in_attesa',
-        importo: 10,
+        statoPagamento: 'gratuito',
+        importo: 0,
         publishedAt: new Date(),
       },
     });
@@ -165,6 +190,8 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
         importo: entry.importo, foto: fotoData,
       },
     });
+
+    await sendConfirmationEmail(entry);
 
     return ctx.send({ ok: true, foto: fotoData.length });
   },
