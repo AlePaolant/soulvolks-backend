@@ -3,15 +3,27 @@ import path from 'path';
 
 export default {
   '0 * * * *': async ({ strapi }: { strapi: any }) => {
-    const HOURS_LIMIT = 48;
-    const cutoff = new Date(Date.now() - HOURS_LIMIT * 60 * 60 * 1000);
+    const HOURS_STANDARD = 48;
+    const HOURS_BONIFICO = 168; // 7 giorni
 
-    const stale = await strapi.entityService.findMany('api::concorso-entry.concorso-entry', {
+    const cutoffStandard = new Date(Date.now() - HOURS_STANDARD * 60 * 60 * 1000);
+    const cutoffBonifico = new Date(Date.now() - HOURS_BONIFICO * 60 * 60 * 1000);
+
+    const staleStandard = await strapi.entityService.findMany('api::concorso-entry.concorso-entry', {
       filters: {
-        statoPagamento: { $in: ['in_attesa', 'in_attesa_contanti', 'in_attesa_bonifico'] },
-        createdAt: { $lt: cutoff.toISOString() },
+        statoPagamento: { $in: ['in_attesa', 'in_attesa_contanti'] },
+        createdAt: { $lt: cutoffStandard.toISOString() },
       },
     });
+
+    const staleBonifico = await strapi.entityService.findMany('api::concorso-entry.concorso-entry', {
+      filters: {
+        statoPagamento: 'in_attesa_bonifico',
+        createdAt: { $lt: cutoffBonifico.toISOString() },
+      },
+    });
+
+    const stale = [...staleStandard, ...staleBonifico];
 
     for (const entry of stale) {
       if (entry.cartellaSlug) {
@@ -22,7 +34,7 @@ export default {
     }
 
     if (stale.length > 0) {
-      strapi.log.info(`Concorso cleanup: rimosse ${stale.length} iscrizioni non pagate oltre ${HOURS_LIMIT}h`);
+      strapi.log.info(`Concorso cleanup: rimosse ${stale.length} iscrizioni non pagate (${staleStandard.length} standard/contanti oltre ${HOURS_STANDARD}h, ${staleBonifico.length} bonifico oltre ${HOURS_BONIFICO}h)`);
     }
   },
 };
