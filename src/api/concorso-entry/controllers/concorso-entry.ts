@@ -222,25 +222,28 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
     const dir = path.join(UPLOADS_ROOT, entry.cartellaSlug);
     if (!fs.existsSync(dir)) return ctx.notFound('Nessuna foto per questa iscrizione');
 
-    const zipPath = path.join('/tmp', `${entry.cartellaSlug}.zip`);
+    const zipPath = path.join('/tmp', `${entry.cartellaSlug}-${Date.now()}.zip`);
     execSync(`cd "${UPLOADS_ROOT}" && zip -r "${zipPath}" "${entry.cartellaSlug}"`);
 
     ctx.set('Content-Type', 'application/zip');
     ctx.set('Content-Disposition', `attachment; filename="${entry.cartellaSlug}.zip"`);
-    ctx.body = fs.createReadStream(zipPath);
+    const stream = fs.createReadStream(zipPath);
+    stream.on('close', () => fs.unlink(zipPath, () => { }));
+    ctx.body = stream;
   },
 
   async adminDownloadTutto(ctx) {
     if (!checkAdmin(ctx)) return ctx.unauthorized('Non autorizzato');
     if (!fs.existsSync(UPLOADS_ROOT)) return ctx.notFound('Nessuna foto caricata');
 
-    const zipPath = '/tmp/concorso-tutte-foto.zip';
-    if (fs.existsSync(zipPath)) fs.rmSync(zipPath);
+    const zipPath = `/tmp/concorso-tutte-foto-${Date.now()}.zip`;
     execSync(`cd "${UPLOADS_ROOT}" && zip -r "${zipPath}" .`);
 
     ctx.set('Content-Type', 'application/zip');
     ctx.set('Content-Disposition', 'attachment; filename="concorso-tutte-foto.zip"');
-    ctx.body = fs.createReadStream(zipPath);
+    const stream = fs.createReadStream(zipPath);
+    stream.on('close', () => fs.unlink(zipPath, () => { }));
+    ctx.body = stream;
   },
 
   async adminCsv(ctx) {
