@@ -166,7 +166,19 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
     }
 
     await strapi.entityService.update('api::concorso-entry.concorso-entry', id, {
-      data: { foto: fotoData },
+      data: {
+        nome: entry.nome,
+        cognome: entry.cognome,
+        email: entry.email,
+        telefono: entry.telefono,
+        note: entry.note,
+        cartellaSlug: entry.cartellaSlug,
+        statoPagamento: entry.statoPagamento,
+        paypalOrderId: entry.paypalOrderId,
+        consensoAccettato: entry.consensoAccettato,
+        importo: entry.importo,
+        foto: fotoData,
+      },
     });
 
     return ctx.send({ ok: true, foto: fotoData.length });
