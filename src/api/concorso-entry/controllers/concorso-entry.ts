@@ -101,7 +101,7 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
       },
     });
 
-    return ctx.send({ id: entry.id, cartellaSlug: entry.cartellaSlug });
+    return ctx.send({ id: entry.id, documentId: entry.documentId, cartellaSlug: entry.cartellaSlug });
   },
 
   async uploadFoto(ctx) {
