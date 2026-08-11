@@ -609,7 +609,7 @@ export interface ApiConcorsoEntryConcorsoEntry
     paypalOrderId: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     statoPagamento: Schema.Attribute.Enumeration<
-      ['in_attesa', 'pagato_paypal', 'pagato_contanti', 'pagato_bonifico']
+      ['gratuito', 'foto_mancanti', 'in_attesa', 'in_attesa_contanti', 'in_attesa_bonifico', 'pagato_paypal', 'pagato_contanti', 'pagato_bonifico']
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'in_attesa'>;
