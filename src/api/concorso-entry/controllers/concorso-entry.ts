@@ -124,7 +124,7 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
         note: note || null,
         consensoAccettato: true,
         cartellaSlug: slug,
-        statoPagamento: 'gratuito',
+        statoPagamento: 'foto_mancanti',
         importo: 0,
         publishedAt: new Date(),
       },
@@ -185,7 +185,7 @@ export default factories.createCoreController('api::concorso-entry.concorso-entr
     await strapi.entityService.update('api::concorso-entry.concorso-entry', id, {
       data: {
         nome: entry.nome, cognome: entry.cognome, email: entry.email, telefono: entry.telefono,
-        note: entry.note, cartellaSlug: entry.cartellaSlug, statoPagamento: entry.statoPagamento,
+        note: entry.note, cartellaSlug: entry.cartellaSlug, statoPagamento: 'gratuito',
         paypalOrderId: entry.paypalOrderId, consensoAccettato: entry.consensoAccettato,
         importo: entry.importo, foto: fotoData,
       },
